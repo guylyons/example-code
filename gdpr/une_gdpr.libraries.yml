@@ -1,0 +1,9 @@
+une-gdpr:
+  css:
+    theme:
+      assets/gdpr.css: {}
+  js:
+    assets/gdpr.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery

@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * @file
+ * Contains une_add_to_calendar.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function une_add_to_calendar_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the une_add_to_calendar module.
+    case 'help.page.une_add_to_calendar':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Creates a block for adding &#039;&#039;Add to Calendar&#039;&#039; buttons to a node') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function une_add_to_calendar_theme() {
+  return [
+    'une_add_to_calendar' => [
+      'variables' => [
+        'title' => NULL, 
+        'description' => NULL,
+        'customvar' => NULL
+    ],
+      'template' => 'block--une_add_to_calendar'
+    ],
+  ];
+}

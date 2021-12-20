@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Contains une_gdpr.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function une_gdpr_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the une_gdpr module.
+  case 'help.page.une_gdpr':
+    $output = '';
+    $output .= '<h3>' . t('About') . '</h3>';
+    $output .= '<p>' . t('Provides a GDPR-compliant cookie warning to users.') . '</p>';
+    return $output;
+
+  default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function une_gdpr_theme() {
+  return [
+    'une_gdpr' => [
+      'variables' => ['text' => NULL],
+    ],
+  ];
+}

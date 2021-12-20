@@ -1,0 +1,6 @@
+name: 'UNE Add to Calendar'
+type: module
+description: 'Creates a block for adding ''Add to Calendar'' buttons to a node'
+core: 8.x
+core_version_requirement: ^8 || ^9
+package: 'Custom'

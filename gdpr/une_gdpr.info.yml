@@ -1,0 +1,6 @@
+name: 'UNE GDPR'
+type: module
+description: 'Provides a GDPR-compliant cookie warning to users.'
+core: 8.x
+core_version_requirement: ^8 || ^9
+package: 'Custom'
