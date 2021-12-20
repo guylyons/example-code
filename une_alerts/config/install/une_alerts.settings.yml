@@ -1,0 +1,3 @@
+alerts:
+  tier1_url: 'http://rss.blackboardconnect.com/139217/category1/feed.xml'
+  tier2_url: 'http://rss.blackboardconnect.com/139217/category2/feed.xml'

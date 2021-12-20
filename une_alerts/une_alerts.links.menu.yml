@@ -1,0 +1,5 @@
+une_alerts.settings:
+  title: 'UNE Alerts'
+  description: 'Configure the UNE alert system connected to Blackboard'
+  route_name: une_alerts.settings
+  parent: system.admin_config_services

@@ -1,0 +1,3 @@
+[submodule "drupal-dockerfile"]
+	path = drupal-dockerfile
+	url = git@github.com:guylyons/drupal-dockerfile.git

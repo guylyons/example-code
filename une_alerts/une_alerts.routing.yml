@@ -1,0 +1,21 @@
+une_alerts.settings:
+  path: '/admin/config/une_alerts'
+  defaults:
+    _form: '\Drupal\une_alerts\Form\UneAlertsConfigurationForm'
+    _title: 'UNE Alerts Configuration'
+  requirements:
+    _permission: 'administer site configuration'
+
+une_alerts.alerts:
+  path: '/emergency/feed/feed.json'
+  defaults:
+    _controller: '\Drupal\une_alerts\Controller\UneAlertsController::alerts'
+  requirements:
+    _access: 'TRUE'
+
+une_alerts.simple_path:
+  path: '/alerts'
+  defaults:
+    _controller: '\Drupal\une_alerts\Controller\UneAlertsController::alerts'
+  requirements:
+    _access: 'TRUE'

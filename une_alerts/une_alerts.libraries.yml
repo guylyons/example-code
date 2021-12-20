@@ -1,0 +1,7 @@
+une-alerts:
+  js:
+    assets/une_alerts.js: {}
+  dependencies:
+    - core/drupal
+    - core/jquery
+    - core/jquery.once

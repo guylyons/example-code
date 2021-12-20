@@ -1,0 +1,7 @@
+name: 'UNE Alerts'
+type: module
+description: 'Displays alerts from Blackboard'
+core: 8.x
+core_version_requirement: ^8 || ^9
+package: 'Custom'
+configure: une_alerts.settings

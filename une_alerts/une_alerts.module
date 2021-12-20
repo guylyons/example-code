@@ -1,0 +1,41 @@
+<?php
+
+/**
+ * @file
+ * Contains une_alerts.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function une_alerts_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the une_alerts module.
+    case 'help.page.une_alerts':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Displays alerts from Blackboard') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function une_alerts_theme() {
+  return [
+    'une_alerts' => [
+      'render element' => 'children',
+    ],
+  ];
+}
+/**
+ * Implements hook_page_attachments().
+ */
+function une_alerts_page_attachments(array &$page) {
+  $page['#attached']['library'][] = 'une_alerts/une-alerts';
+}
