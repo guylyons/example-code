@@ -1,0 +1,39 @@
+<?php
+// GDPR Field for Configuration > System > Site Information
+// for the UNE GDPR popup
+// @author Guy L. Lyons II
+// @email  glyons1@une.edu
+//
+
+function une_gdpr_form_system_site_information_settings_alter(&$form, &$form_state)
+{
+  $form['site_information']['une_gdpr'] = array(
+    '#type' => 'textarea',
+    '#title' => t('UNE GDPR'),
+    '#default_value' => variable_get('une_gdpr', ''),
+    '#description' => t('Enter text here to be displayed in the window of the GDPR popup panel.'),
+  );
+
+  $form['#submit'][] = 'une_gdpr_handler';
+}
+
+function une_gdpr_handler($form, &$form_state)
+{
+  variable_set('une_gdpr', $form_state['values']['une_gdpr']);
+}
+
+function une_gdpr_page_alter(&$page)
+{
+  $page['content']['system_main']['nodes'][$nid]['body'] = array(
+    '#markup' => t('<div class="gdpr">
+    <div class="gdpr-container">
+      <p>' . variable_get('une_gdpr') . '</p>
+      <a href="#0" class="gdpr-button">Accept</a>
+    </div>
+  </div>'),
+    '#weight' => -100
+  );
+}
+
+drupal_add_js(drupal_get_path('module', 'une_gdpr') . '/une_gdpr.js', 'file');
+

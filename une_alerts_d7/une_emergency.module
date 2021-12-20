@@ -1,0 +1,383 @@
+<?php
+/**
+ * TODO
+ *
+ * une_emergency.js:
+ *     activity check to ease server load.
+ *
+ * une_emergency.css:
+ *     Add styles to replace the ones explicitly created in une_emergency.js.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function une_emergency_menu()
+{
+    $items['emergency/feed/feed.json'] = array(
+        'title' => 'Emergency Feed',
+        'page callback' => 'une_emergency_proxy',
+        // no access restriction because emergency data
+        'access callback' => true,
+        'delivery callback' => 'une_emergency_json',
+    );
+    return $items;
+}
+
+function une_emergency_form_system_site_information_settings_alter(&$form, &$form_state)
+{
+    $dformat = "Y-m-d H:i:s";
+    $now = format_date(time(), "custom", $dformat);
+    $now_plus_twelve = format_date(time() + 43200, "custom", $dformat);  // 12 hours from now
+    $form['une_emergency_feeds'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('UNE Emergency Feeds'),
+    );
+
+    $form['une_emergency_overrides'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('UNE Emergency Override Events'),
+    );
+
+    // main tier-1 feed
+    $form['une_emergency_feeds']['une_emergency_tier1_url'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Tier 1 URL'),
+        '#default_value' => variable_get('une_emergency_tier1_url', 'http://rss.blackboardconnect.com/139217/category1/feed.xml'),
+        '#size' => 40,
+        '#description' => t('The full URL of the tier 1 emergency feed (e.g. http://rss.blackboardconnect.com/139217/category1/feed.xml).'),
+    );
+    // main tier-2 feed
+    $form['une_emergency_feeds']['une_emergency_tier2_url'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Tier 2 URL'),
+        '#default_value' => variable_get('une_emergency_tier2_url', 'http://rss.blackboardconnect.com/139217/category2/feed.xml'),
+        '#size' => 40,
+        '#description' => t('The full URL of the tier 2 emergency feed (e.g. http://rss.blackboardconnect.com/139217/category2/feed.xml).'),
+    );
+
+    // tier-1 event override
+    $form['une_emergency_overrides']['une_emergency_tier1_do_override'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Override tier-1 RSS feed'),
+        '#default_value' => variable_get('une_emergency_tier1_do_override', 0),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier1_override_title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Tier 1 override event title'),
+        '#default_value' => variable_get('une_emergency_tier1_override_title', ''),
+        '#size' => 40,
+        '#description' => t('Title for emergency event'),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier1_override_desc'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Tier 1 override description'),
+        '#default_value' => variable_get('une_emergency_tier1_override_desc', ''),
+        '#cols' => 20,
+        '#rows' => 4,
+        '#description' => t('Description for emergency event'),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier1_override_datetime'] = array(
+        '#type' => 'date_select',
+        '#title' => t('Tier 1 override timestamp'),
+        '#default_value' => variable_get('une_emergency_tier1_do_override', 0) == '1' ? variable_get('une_emergency_tier1_override_datetime', $now) : $now,
+        '#date_label_position' => 'within',
+        '#date_timezone' => 'America/New_York',
+        '#date_format' => $dformat,
+        '#description' => t('Timestamp for emergency event'),
+    );
+
+    // backup tier-2 event
+    $form['une_emergency_overrides']['une_emergency_tier2_do_override'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Override tier-2 RSS feed'),
+        '#default_value' => variable_get('une_emergency_tier2_do_override', 0),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier2_override_title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Tier 2 override event title'),
+        '#default_value' => variable_get('une_emergency_tier2_override_title', ''),
+        '#size' => 40,
+        '#description' => t('Title for emergency event'),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier2_override_desc'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Tier 2 override description'),
+        '#default_value' => variable_get('une_emergency_tier2_override_desc', ''),
+        '#cols' => 20,
+        '#rows' => 4,
+        '#description' => t('Description for emergency event'),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier2_override_datetime'] = array(
+        '#type' => 'date_select',
+        '#title' => t('Tier 2 override timestamp'),
+        '#default_value' => variable_get('une_emergency_tier2_do_override', 0) == '1' ? variable_get('une_emergency_tier2_override_datetime', $now) : $now,
+        '#date_label_position' => 'within',
+        '#date_timezone' => 'America/New_York',
+        '#date_format' => $dformat,
+        '#description' => t('Timestamp for emergency event'),
+    );
+    $form['une_emergency_overrides']['une_emergency_tier2_override_expires'] = array(
+        '#type' => 'date_select',
+        '#title' => t('Tier 2 override auto-expiration'),
+        '#default_value' => variable_get('une_emergency_tier2_do_override', 0) == '1' ? variable_get('une_emergency_tier2_override_expires', $now_plus_twelve) : $now_plus_twelve,
+        '#date_label_position' => 'within',
+        '#date_timezone' => 'America/New_York',
+        '#date_format' => $dformat,
+        '#description' => t('Time at which emergency event automatically expires'),
+    );
+    $form['#validate'][] = 'une_emergency_form_system_site_information_validate';
+}
+
+function une_emergency_form_system_site_information_validate($form, &$form_state)
+{
+    $values = $form_state['values'];
+    if (!filter_var($values['une_emergency_tier1_url'], FILTER_VALIDATE_URL)) {
+        form_set_error('une_emergency_tier1_url', t('Tier 1 URL is invalid.'));
+    }
+    if (!filter_var($values['une_emergency_tier2_url'], FILTER_VALIDATE_URL)) {
+        form_set_error('une_emergency_tier2_url', t('Tier 2 URL is invalid.'));
+    }
+
+    // check none of our override values are empty
+    if ($values['une_emergency_tier1_do_override'] && variable_get('une_emergency_tier1_do_override')) {
+        if (!$values['une_emergency_tier1_override_title']) {
+            form_set_error('une_emergency_tier1_override_title', t('Tier 1 title must not be empty.'));
+        }
+        if (!$values['une_emergency_tier1_override_desc']) {
+            form_set_error('une_emergency_tier1_override_desc', t('Tier 1 description must not be empty.'));
+        }
+    }
+    if ($values['une_emergency_tier2_do_override'] && variable_get('une_emergency_tier2_do_override')) {
+        if (!$values['une_emergency_tier2_override_title']) {
+            form_set_error('une_emergency_tier2_override_title', t('Tier 2 title must not be empty.'));
+        }
+        if (!$values['une_emergency_tier2_override_desc']) {
+            form_set_error('une_emergency_tier2_override_desc', t('Tier 2 description must not be empty.'));
+        }
+
+        $timestamp = strtotime($values['une_emergency_tier2_override_datetime']);
+        $expiry = strtotime($values['une_emergency_tier2_override_expires']);
+        if ($expiry <= $timestamp) {
+            form_set_error('une_emergency_tier2_override_expires', t('Expiration date must be after event timestamp.'));
+        }
+    }
+}
+
+/**
+ *  Page callback for emergency/feed
+ * Returns a json version of the blackboard emergency rss feed
+ *   TODO: Possibly add a header to bust the varnish cache for this page
+ */
+function une_emergency_proxy()
+{
+    // Declare variables
+    $output = array(); // main output array
+    // tier 1-2 temp arrays
+    $t1array = array();
+    $t2array = array();
+
+    $tier1_rss = variable_get('une_emergency_tier1_url', 'http://rss.blackboardconnect.com/139217/category1/feed.xml');
+    $tier2_rss = variable_get('une_emergency_tier2_url', 'http://rss.blackboardconnect.com/139217/category2/feed.xml');
+
+    // Fetch the blackboard rss feeds
+    $tier1 = drupal_http_request($tier1_rss);
+    $tier2 = drupal_http_request($tier2_rss);
+
+    $tz = new DateTimeZone('America/New_York');
+    $timezone = (count($tz->getTransitions(time())) > 0) ? 'EST' : 'EDT';
+
+    // go to override if present or if rss not found
+    $override_tier1 = variable_get('une_emergency_tier1_do_override');
+    $over1_title = variable_get('une_emergency_tier1_override_title');
+    $over1_desc = variable_get('une_emergency_tier1_override_desc');
+    if (($override_tier1 && !empty($over1_title) && !empty($over1_desc)) || ($tier1->code !== '200' && !empty($over1_title) && !empty($over1_desc))) {
+        $over1_date = variable_get('une_emergency_tier1_override_datetime');
+        $over1_pubdate = (string) $over1_date;
+
+        $timestamp = null; $timestamp = strtotime($over1_date);
+        $dow = null;
+        $dow = date("D", $timestamp);
+        $propperDate = null;
+        $propperDate = date("M j, Y", $timestamp);
+        $propperTime = null;
+        $propperTime = date("h:i A", $timestamp);
+        array_push(
+            $t1array, array(
+                'title' => $over1_title,
+                'description' => $over1_desc,
+                'rawDate' => $over1_pubdate,
+                'propperDate' => (string) $propperDate,
+                'propperTime' => (string) $propperTime,
+                'dow' => $dow,
+                'timestamp' => $timestamp,
+                'timezone' => $timezone,
+            )
+        );
+
+        // Put together the output array for json processing
+        $output["tier1"] = array(
+            'title' => "Category 1",
+            'description' => "This is the overridden value for a Category 1 event, which includes Active Shooter, Person on Campus with a gun, Major Chemical Spill with imminent risk to health and safety of campus, Building Explosion, Bomb Threat Affecting Entire Campus.",
+            'items' => $t1array,
+        );
+    } elseif ($tier1->code == '200') {
+        $tier1xml = simplexml_load_string($tier1->data);
+        // format the tier 1 json array
+        foreach ($tier1xml->channel->item as $item) {
+            $timestamp = null; $timestamp = strtotime($item->pubDate);
+            $dow = null;
+            $dow = date("D", $timestamp);
+            $propperDate = null;
+            $propperDate = date("M j, Y", $timestamp);
+            $propperTime = null;
+            $propperTime = date("h:i A", $timestamp);
+            array_push(
+                $t1array, array(
+                    'title' => (string) $item->title,
+                    'description' => (string) $item->description,
+                    'rawDate' => (string) $item->pubDate,
+                    'propperDate' => (string) $propperDate,
+                    'propperTime' => (string) $propperTime,
+                    'dow' => $dow,
+                    'timestamp' => $timestamp,
+                    'timezone' => $timezone,
+                )
+            );
+        }
+
+        // Put together the output array for json processing
+        $output["tier1"] = array(
+            'title' => (string) $tier1xml->channel->title,
+            'description' => (string) $tier1xml->channel->description,
+            'items' => $t1array,
+        );
+    } else {
+        $output["tier1"] = array(
+            'title' => "Category 1",
+            'description' => "This data set is empty",
+            'items' => array(),
+        );
+    }
+
+    // go to override if present or if rss not found
+    $override_tier2 = variable_get('une_emergency_tier2_do_override');
+    $over2_title = variable_get('une_emergency_tier2_override_title');
+    $over2_desc = variable_get('une_emergency_tier2_override_desc');
+    if (($override_tier2 && !empty($over2_title) && !empty($over2_desc)) || ($tier2->code !== '200' && !empty($over2_title) && !empty($over2_desc))) {
+        if (!empty($over2_title) && !empty($over2_desc)) {
+            $over2_date = variable_get('une_emergency_tier2_override_datetime');
+            $over2_pubdate = (string) $over2_date;
+
+            $timestamp = null; $timestamp = strtotime($over2_date);
+            $dow = null;
+            $dow = date("D", $timestamp);
+            $propperDate = null;
+            $propperDate = date("M j, Y", $timestamp);
+            $propperTime = null;
+            $propperTime = date("h:i A", $timestamp);
+            array_push(
+                $t2array, array(
+                    'title' => $over2_title,
+                    'description' => $over2_desc,
+                    'rawDate' => $over2_pubdate,
+                    'propperDate' => (string) $propperDate,
+                    'propperTime' => (string) $propperTime,
+                    'dow' => $dow,
+                    'timestamp' => $timestamp,
+                    'timezone' => $timezone,
+                )
+            );
+        }
+
+        // Put together the output array for json processing
+        $output["tier2"] = array(
+            'title' => "Category 2",
+            'description' => "This is the overridden value for a Category 2 event, which includes Major Fire, Major crime
+Bomb Threat affecting specified target, Significant weather emergency requiring evacuation or shelter in place, Significant crime on campus resulting in injury.",
+            'items' => $t2array,
+        );
+    } elseif ($tier2->code == '200') {
+        $tier2xml = simplexml_load_string($tier2->data);
+        // format the tier 2 json array
+        foreach ($tier2xml->channel->item as $item) {
+            $timestamp = null; $timestamp = strtotime($item->pubDate);
+            $dow = null;
+            $dow = date("D", $timestamp) . ',';
+            $propperDate = null;
+            $propperDate = date("M j, Y", $timestamp);
+            $propperTime = null;
+            $propperTime = date("h:i A", $timestamp);
+            array_push(
+                $t2array, array(
+                    'title' => (string) $item->title,
+                    'description' => (string) $item->description,
+                    'rawDate' => (string) $item->pubDate,
+                    'propperDate' => (string) $propperDate,
+                    'propperTime' => (string) $propperTime,
+                    'dow' => $dow,
+                    'timestamp' => $timestamp,
+                    'timezone' => $timezone,
+                )
+            );
+        }
+
+        // Put together the output array for json processing
+        $output["tier2"] = array(
+            'title' => (string) $tier2xml->channel->title,
+            'description' => (string) $tier2xml->channel->description,
+            'items' => $t2array,
+        );
+    } else {
+        $output["tier2"] = array(
+            'title' => "Category 2",
+            'description' => "This data set is empty",
+            'items' => array(),
+        );
+    }
+
+    return $output;
+}
+
+/**
+ * Delivers JSON. Used as a deliver callback for data feed menu items.
+ *
+ * @param array   $data
+ *   An array to be encoded as json.
+ * @param boolean $allow_cache
+ *   Set to false to try to prevent caches from storing this response.
+ */
+function une_emergency_json($data, $allow_cache = false)
+{
+    if (isset($data['error'])) {
+        drupal_add_http_header('Status', '400 Bad Request');
+    }
+
+    if ($allow_cache === false) {
+        // Prevent this data from being cached.
+        // See https://docs.acquia.com/articles/bypassing-varnish-cache
+        drupal_add_http_header('Cache-Control', 'public, max-age=0');
+        drupal_add_http_header('Expires', 'Sat, 26 Jul 1997 05:00:00 GMT');
+        drupal_add_http_header('Pragma', 'no-cache');
+    }
+
+    drupal_json_output($data);
+}
+
+/**
+ * Registers cron job to disable tier-2 events at a given time
+ */
+function une_emergency_cron()
+{
+    $do_override = "une_emergency_tier2_do_override";
+    $now = time();
+    $expiry = strtotime(
+        variable_get(
+            "une_emergency_tier2_override_expires", format_date(time(), "custom", "Y-m-d H:i:s")
+        )
+    );
+
+    if (variable_get($do_override) == "1" && $now >= $expiry - 300) { // 5 minutes from expiration or later
+        variable_set($do_override, 0);
+    }
+}

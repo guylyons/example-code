@@ -1,0 +1,8 @@
+name = UNE GDPR
+description = Creates a fixed panel to accept terms of the UNE GDPR
+core = 7.x
+package = UNE
+version = 7.x-1.0
+
+stylesheets[all][] = une_gdpr.css
+; scripts[] = une_gdpr.js
